@@ -3,5 +3,5 @@
 *.ico
 *.png
 *.Rproj
-result
-.Rproj.user
+result/
+.Rproj.user/
