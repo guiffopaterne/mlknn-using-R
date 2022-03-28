@@ -3,3 +3,5 @@
 *.ico
 *.png
 *.Rproj
+result
+.Rproj.user
