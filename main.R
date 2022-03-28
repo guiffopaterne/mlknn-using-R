@@ -1,0 +1,25 @@
+setwd("~/Desktop/r")
+library('utiml')
+library('e1071')
+library("lubridate")
+library('shiny')
+library('arules')
+library('party')
+library('arulesViz')
+library("rpart")
+library("neuralnet")
+source("./Tp4117/function/datasets_util.R")
+source("./Tp4117/function/preprocessing.R")
+source("./Tp4117/function/models.R")
+source("./Tp4117/rshine/mlknn_model.R")
+source("./Tp4117/rshine/description.R")
+source("./Tp4117/rshine/Statistique.R")
+source("./Tp4117/rshine/server.R")
+source("./Tp4117/rshine/ui.R")
+datas<-load_datasets("Tp4117/datasets/datas.csv")
+runApp(list(
+       ui=ui,
+       server=server
+        ),
+       port = getOption("shiny.port",8001),
+)

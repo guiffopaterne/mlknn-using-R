@@ -1,0 +1,27 @@
+load_datasets<-function (chemin){
+  return(read.csv(chemin,sep = ';',header=TRUE,dec = "."))
+}
+colnames_dataset<-function (x){
+  return(names(x))
+}
+drop_colnames <-function (df,colnames){
+  return(subset(df, select = -colnames))
+}
+metric_single_label <- function(M){
+  p <- r <- a <- 0
+  classe <- dim(M)[1]
+  for( i in 1:classe){
+    p <- p + M[i,i]/sum(M[,i])
+    r <- r + M[i,i]/sum(M[i,])
+    a <- a + M[i,i]
+    }
+  p <- p / classe
+  r <- r / classe
+  F <- (2*r*p)/(r+p)
+  a <- a / sum(M)
+  return (c(p,r,F,a))
+
+}
+?read.csv
+getmode(c(1,3,3,2))
+mode

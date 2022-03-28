@@ -1,0 +1,167 @@
+library('shiny')
+server <- function(input, output,session){
+  output$contents <- renderDataTable({
+    inFile <- input$file1
+    if (is.null(inFile)) return(NULL)
+    print(inFile$datapath)
+    load_datasets(inFile$datapath)
+  })
+    observeEvent(input$ValeurNA,{
+      inFile <- input$file1
+      if (is.null(inFile)) return(NULL)
+      print(inFile$datapath)
+      data_brute<-load_datasets(inFile$datapath)
+      description_label <- data_brute[is.na(data_brute$Latitude),]
+      data_brute <-data_brute[!is.na(data_brute$Latitude),]
+      data_brute[is.na(data_brute)]<-0
+      output$contents <- renderDataTable({
+      data_brute})
+    })
+    observeEvent(input$binarisation,{
+      inFile <- input$file1
+      if (is.null(inFile)) return(NULL)
+      print(inFile$datapath)
+      data_brute<-load_datasets(inFile$datapath)
+      description_label <- data_brute[is.na(data_brute$Latitude),]
+      data_brute <-data_brute[!is.na(data_brute$Latitude),]
+      data_brute[is.na(data_brute)]<-0
+      elements<- list_classe(data_brute$City)
+      data_brute<-binarizer_classe(data_brute,data_brute$City,elements)
+      output$contents <- renderDataTable({
+        data_brute})
+    })
+    output$distPlot <- renderPlot({
+    datasets_mlknn <-load_datasets("Tp4117/datasets/datas.csv")
+    description_label <- datasets_mlknn[is.na(datasets_mlknn$Latitude),]
+    datasets_mlknn <-datasets_mlknn[!is.na(datasets_mlknn$Latitude),]
+    datasets_mlknn[is.na(datasets_mlknn)]<-0
+    datasets_mlknn$ID<-NULL
+    datasets_mlknn$City<-NULL
+    datasets_mlknn$Place.names<-NULL
+    datasets_mlknn$Place.names.1<-NULL
+    distance <- c("euclidean","maximum", "manhattan")
+    label <- 3:ncol(datasets_mlknn)
+    choice <- sample(seq_len(nrow(datasets_mlknn)), (2*nrow(datasets_mlknn))%/%3)
+      if(input$min>input$max ){
+       session$sendCustomMessage(type = 'testmessage',
+        message = 'Merci de prendre k min superieur a K max')
+      }else{
+        print("xlim:")
+        print(input$max+2)
+        metric <- models(input$min,input$max,distance,datasets_mlknn[choice,],datasets_mlknn[-choice,],label)
+        metric_euclien <-metric[[1]]
+        metric_maximun <-metric[[2]]
+        metric_manhattan <-metric[[3]]
+        ylims<-max(c(metric_euclien$hamming_loss_test,metric_maximun$hamming_loss_test,metric_manhattan$hamming_loss_test))
+        ylim_min<-min(c(metric_euclien$hamming_loss_test,metric_maximun$hamming_loss_test,metric_manhattan$hamming_loss_test))
+        plot(metric_euclien$K,metric_euclien$hamming_loss_test,type="l",col="red",
+             xlab = "k voisin",ylab = "hamming loss",xlim=c(input$min,input$max+2),ylim =c(ylim_min,ylims+0.1))
+        lines(metric_euclien$K,metric_maximun$hamming_loss_test,col="green")
+        lines(metric_euclien$K,metric_manhattan$hamming_loss_test,col="blue")
+        title("Metric ML-Knn lazy")
+        legend(input$max-1,ylims+0.05 , legend=c("euclidienne", " Maximun","manhattan"),
+               col=c("red", "green","blue"), lty=1:2, cex=0.8)
+        }
+    })
+  output$tableDescription<-renderTable({
+    table(datasets[1:10,])
+    table(description_label)
+  })
+  # observeEvent(input$generate_rule,{
+    output$inc<-renderUI({
+    minsupp <- input$minsupp
+    minconf <-input$minconf
+    datasets_rules  <-load_datasets("Tp4117/datasets/datas.csv")
+    datasets_rules <-datasets_rules[!is.na(datasets_rules$Latitude),]
+    datasets_rules[is.na(datasets_rules)]<-0
+    datasets_rules$ID<-NULL
+    datasets_rules$place.names.1<-NULL
+    datasets_rules$place.names<-NULL
+    datasets_rules$Latitude<-NULL
+    datasets_rules$Longitude<-NULL
+    datasets_rules[,1]<-as.factor(datasets_rules[,1])
+    for(i in seq_len(ncol(datasets_rules))){
+      datasets_rules[datasets_rules[,i]==1,i]<-names(datasets_rules)[i]
+      datasets_rules[datasets_rules[,i]==0,i]<-paste("No",names(datasets_rules)[i],sep="_")
+      datasets_rules[,i]<-as.factor(datasets_rules[,i])
+    }
+    print("good here")
+    head(datasets_rules)
+    datasets_rules <- as(datasets_rules,"transactions")
+    print("good here 2")
+    head(datasets_rules)
+    rules <- apriori(datasets_rules,parameter = list(supp=minsupp, conf=minconf, target="rules"))
+    p <- inspectDT(rules)
+    htmlwidgets::saveWidget(p, "./Tp4117/result/arules.html", selfcontained = FALSE)
+
+      tags$iframe(seamless="seamless",
+                  src= "./Tp4117/result/arules.html",
+                  width=800,
+                  height=800)})
+  output$plotTree<-renderPlot({
+    datasets_tree <-load_datasets("Tp4117/datasets/datas.csv")
+    datasets_tree$ID<-NULL
+    datasets_tree$place.names.1<-NULL
+    datasets_tree$place.names<-NULL
+    datasets_tree$Latitude<-NULL
+    datasets_tree$Longitude<-NULL
+    train_ind <- sample(seq_len(nrow(datasets_tree)), (1*nrow(datasets_tree))%/%4)
+    # data_test<-datasets_tree[-train_ind,]
+    AD <- rpart(City~.,datasets_tree[train_ind,])
+    plot(AD,rep="best")
+    })
+    
+    observeEvent(input$neural_train,{
+      withProgress(message = 'Training Neural Net',detail = 'Cela va prendre un peu de temps', value = 0, {
+        datasets_neural <-load_datasets("Tp4117/datasets/datas.csv")
+        incProgress(1/8)
+        datasets_neural <-datasets_neural[!is.na(datasets_neural$Latitude),]
+        datasets_neural$ID<-NULL
+        datasets_neural$Place.names.1<-NULL
+        datasets_neural$Place.names<-NULL
+        datasets_neural$Latitude<-NULL
+        datasets_neural$Longitude<-NULL
+        datasets_neural[is.na(datasets_neural)]<-0
+        incProgress(2/8)
+        elements<- list_classe(datasets_neural$City)
+        datasets_neural<-binarizer_classe(datasets_neural,datasets_neural$City,elements)
+        incProgress(3/8)
+        train_ind <- sample(seq_len(nrow(datasets_neural)), (input$splitdata*nrow(datasets_neural))%/%10)
+        datasets_neural_train <- datasets_neural[train_ind,-1]
+        datasets_neural_test <- datasets_neural[-train_ind,-1]
+        f<-paste(paste(elements,collapse = " + "),"~")
+        n<-names(datasets_neural_train)
+        f <- as.formula(paste(f, paste(n[!n %in% elements], collapse = " + ")))
+        incProgress(4/8)
+        model_neural_net <- neuralnet( f, data=datasets_neural_train,hidden = input$hidden)
+        incProgress(5/8)
+        output$plotNeural<-renderPlot({
+          plot(model_neural_net,rep="best")
+        })
+        incProgress(6/8)
+        predict_neural_net <- compute(model_neural_net,datasets_neural_test)$net.result
+        incProgress(7/8)
+        max_neural_net <- function (arr){ return (which(arr==max(arr)))}
+        index_max <- apply(predict_neural_net,1,max_neural_net)
+        predict <- predict_neural_net[index_max]
+        output$confusionData<-renderTable({
+          matrix_confusion<-table(predict,datasets_neural_test$Baghdad)
+        })
+        incProgress(8/8)
+        
+      })
+    })
+  
+  output$plotKmeans<-renderPlot({
+    datasets_kmeans<-load_datasets("Tp4117/datasets/datas.csv")
+    datasets_kmeans <-datasets_kmeans[!is.na(datasets_kmeans$Latitude),]
+    datasets_kmeans$ID<-NULL
+    datasets_kmeans$Place.names.1<-NULL
+    datasets_kmeans$Place.names<-NULL
+    datasets_kmeans$City<-NULL
+    datasets_kmeans[is.na(datasets_kmeans)]<-0
+    clusters <-input$k
+    km<-kmeans(datasets_kmeans[,c(1,2)],centers=clusters)
+    plot(datasets_kmeans$Latitude,datasets_kmeans$Longitude,col = km$cluster,xlim=c(30,40),ylim = c(10,60))
+  })
+}

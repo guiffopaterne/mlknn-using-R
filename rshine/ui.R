@@ -1,0 +1,18 @@
+library('shiny')
+ui<- fluidPage(
+  # App title ----
+  titlePanel("Groupe 21 Fouille de donnees"),
+  icon("./Tp4117/datasets/logo.ico"),
+  navbarPage("Iraq Tourism",
+             tabPanel("Preprocessing",
+                      statistique),
+             tabPanel("kmeans",
+                      kmeansWiget),
+             tabPanel("Regles d\'Associations",
+                      descriptions),
+             tabPanel("Arbre de Decisions",
+                      tree_decision),
+             tabPanel("NeuralNet",neuralNetwork),
+             tabPanel("Mlknn",mlknn_model)
+),
+)
